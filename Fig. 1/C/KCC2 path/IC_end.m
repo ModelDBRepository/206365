@@ -1,0 +1,16 @@
+Ko(1)=Ko(end);
+Cli(1)=Cli(end);
+cai(1)=cai(end);
+Bs(1)=Bs(end);
+VD(1)=VD(end);
+VSOMA(1)=VSOMA(end);
+m_iKv(1)=m_iKv(end);
+m_iNa(1)=m_iNa(end);
+h_iNa(1)=h_iNa(end);
+m_iKm(1)=m_iKm(end);
+m_iNaD(1)=m_iNaD(end);
+h_iNaD(1)=h_iNaD(end);
+m_iNapD(1)=m_iNapD(end);
+m_iKCa(1)=m_iKCa(end);
+m_iHVA(1)=m_iHVA(end);
+h_iHVA(1)=h_iHVA(end);

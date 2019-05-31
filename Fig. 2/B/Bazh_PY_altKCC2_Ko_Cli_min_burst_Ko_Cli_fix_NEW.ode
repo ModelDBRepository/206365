@@ -1,0 +1,322 @@
+# Modified from FF_Single_Cell.ode
+# Two compartment model based on Maxim's code
+# Last change: 14th September 2005 by ff
+# modif: spring 2006 by mb
+# Fall 2009 by GPK
+# Winter-Spring 2012-2013 by Anatoly
+
+########################################################################################################
+# Parameters & Constants
+
+# input current to the dendrite
+par I=0
+
+# AMPA synapse, mS/cm^2, gE is twice small
+ par gE=0
+ par alphaE1=0.185, alphaE2=0.185
+ par VAMPA=0
+
+# delay between gE and gI
+ par tD=0
+
+ par 
+# GABA-A synapse, mS/cm^2, gI is twice small
+ par gI=0
+ par alphaI1=5, alphaI2=0.120
+# par VGABA=-70
+
+
+# Cl, Cl0 is assumed to be constant, 130 mM, around KCC2(+) point
+ par Cli=3.46
+ par Clo=130
+ par HCO3o=26
+ par HCO3i=16
+ 
+############# ion concentrations ################
+par kCL=100
+
+# K
+ par Ki=150
+ par Ko=4
+ par kK=10
+
+# in the original model = 25
+par Vbolz=22
+
+# ratio of volume of extracellular compartment to the surface area
+par d=0.15
+
+# volume of an extracellular compartment
+
+
+# Na
+par Nao=130, Nai=20
+par kNa=10
+
+
+par e0=26.6393
+par  E_l=-61, Cm=0.75
+
+number kappa=10000,S_Soma=0.000001,S_Dend=0.000165, A=0, F=96489
+
+##### conductances ######
+
+par G_Na=3450.0, G_Kv=200.0
+par G_lD=0.01
+par G_NaD=1.1
+par G_NapD=3.5
+par G_HVA=0.0195, E_Ca=140, TauCa=800, DCa=0.85
+par G_KCa=2.5
+par G_Km=0.01
+
+# G_kl=0.044 in non-rescaled model
+par G_kl=0.044
+par G_Nal=0.02
+par gg_kl=0.042, gg_Nal=0.0198
+
+###### pumps parameters ####### microA/cm^2
+par Koalpha=3.5, Naialpha=20
+par Imaxsoma=25, Imaxdend=25
+par Kothsoma=15, Kothdend=15
+par koff=0.0008
+par K1n=1.0, Bmax=500
+
+##### KCC2 pump model #####
+#### Doyon et al, 2011 parameters ####
+
+par Vhalf=40
+par Ikcc2=2
+
+
+############################### Algebraic equations ##############################
+
+
+## Stimulus generation
+
+# if a!=b
+K(a,b)=a*b/(a-b)*((a/b)^(b/(b-a))-(a/b)^(a/(b-a)))
+
+# if a=b
+Ke(a,b)=b*exp(-1)
+
+
+# par ts=500
+# par dts=500
+# global 1 t-ts { ts=ts+dts }
+
+# delta functions
+
+ deltaE=1/0.05*( heav(t-300)*heav(300+0.05-t) +heav(t-600)*heav(600+0.05-t) +heav(t-900)*heav(900+0.05-t) +heav(t-1200)*heav(1200+0.05-t) +heav(t-1500)*heav(1500+0.05-t) +heav(t-1800)*heav(1800+0.05-t)  +heav(t-2100)*heav(2100+0.05-t))
+ # +heav(t-2400)*heav(2400+0.05-t) +heav(t-2700)*heav(2700+0.05-t) +heav(t-3000)*heav(3000+0.05-t) )
+
+ deltaI=1/0.05*( heav(t-tD-300)*heav(300+0.05-t+tD) +heav(t-td-600)*heav(600+0.05-t+td) +heav(t-td-900)*heav(900+0.05-t+td) +heav(t-td-1200)*heav(1200+0.05-t+td) +heav(t-td-1500)*heav(1500+0.05-t+td) +heav(t-td-1800)*heav(1800+0.05-t+td)  +heav(t-td-2100)*heav(2100+0.05-t+td))
+#+heav(t-td-2400)*heav(2400+0.05-t+td) +heav(t-td-2700)*heav(2700+0.05-t+td) +heav(t-td-3000)*heav(3000+0.05-t+td) )
+
+
+ dINE/dt=INNE
+ dINNE/dt=alphaE1*alphaE2*(deltaE*(1-INE)/Ke(alphaE1,alphaE2)-INE-(1/alphaE1+1/alphaE2)*INNE)
+
+ dINI/dt=INNI
+ dINNI/dt=alphaI1*alphaI2*(deltaI*(1-INI)/K(alphaI1,alphaI2)-INI-(1/alphaI1+1/alphaI2)*INNI)
+
+
+### Dendritic Compartment ###
+
+#######  iNaD  ######
+iNaD(m_iNaD,h_iNaD,VD) =  2.9529 * G_NaD * m_iNaD * m_iNaD * m_iNaD * h_iNaD * (VD - eNad)
+am_iNaD=0.182*(VD-10+35)/(1-exp(-(VD-10+35)/9))
+bm_iNaD=0.124*(-VD+10-35)/(1-exp(-(-VD+10-35)/9))
+ah_iNaD=0.024*(VD-10+50)/(1-exp(-(VD-10+50)/5))
+bh_iNaD=0.0091*(-VD+10-75)/(1-exp(-(-VD+10-75)/5))
+tau_mD = (1/(am_iNaD+bm_iNaD))/2.9529
+tau_hD = (1/(ah_iNaD+bh_iNaD))/2.9529
+minf_newD = am_iNaD/(am_iNaD+bm_iNaD) 
+hinf_newD = 1/(1+exp((VD-10+65)/6.2))
+
+dm_iNaD/dt= -(m_iNaD - minf_newD)/tau_mD
+dh_iNaD/dt = -(h_iNaD - hinf_newD)/tau_hD
+
+
+####### iNapD ######
+iNapD(m_iNapD,VD) = G_NapD * m_iNapD * (VD - eNad)
+minfiNapD(VD) = 0.02/(1 + exp(-(VD+42)/5))
+dm_iNapD/dt = -(m_iNapD - minfiNapD(VD))/0.1992
+
+
+#######  IHVA ######
+iHVA(m_iHVA,h_iHVA,VD) = 2.9529* G_HVA * m_iHVA*m_iHVA*h_iHVA * (VD - E_Ca)
+am_iHVA(VD) = 0.055*(-27 - VD)/(exp((-27-VD)/3.8) - 1)
+bm_iHVA(VD) = 0.94*exp((-75-VD)/17)
+tauHVAm = 1/((am_iHVA(VD)+bm_iHVA(VD))*2.9529) 
+infHVAm = am_iHVA(VD)/(am_iHVA(VD)+bm_iHVA(VD))
+ah_iHVA(VD) = 0.000457*exp((-13-VD)/50)
+bh_iHVA(VD) = 0.0065/(exp((-VD-15)/28) + 1)
+tauHVAh = 1/((ah_iHVA(VD)+bh_iHVA(VD))*2.9529)
+infHVAh = ah_iHVA(VD)/(ah_iHVA(VD)+bh_iHVA(VD))
+dm_iHVA/dt = -(m_iHVA-infHVAm)/tauHVAm
+dh_iHVA/dt = -(h_iHVA-infHVAh)/tauHVAh
+
+
+####### iKCa  ######
+iKCa(m_iKCa,VD) = G_KCa*m_iKCa*m_iKCa*(VD - eKd)
+minf_iKCa(cai) = (48*cai*cai/0.03)/(48*cai*cai/0.03 + 1)
+taum_iKCa(cai) = (1/(0.03*(48*cai*cai/0.03 + 1)))/4.6555
+dm_iKCa/dt = -(1/taum_iKCa(cai))*(m_iKCa - minf_iKCa(cai))
+
+####### Ca2+ dynamics ######
+dcai/dt = -5.1819e-5*iHVA(m_iHVA,h_iHVA,VD)/DCa + (0.00024-cai)/TauCa
+
+
+####### iKm ######
+ iKm(m_iKm,VD) = 2.9529 * G_Km * m_iKm * (VD - eKd)
+ am_iKm(VD) = 0.001 * (VD + 30) / (1 - exp(-(VD + 30)/9))
+ bm_iKm(VD) = -0.001 * (VD + 30) / (1 - exp((VD + 30)/9))
+ tauKmm = 1/((am_iKm(VD)+bm_iKm(VD))*2.9529)
+ infKmm = am_iKm(VD)/(am_iKm(VD)+bm_iKm(VD))
+ dm_iKm/dt = -(m_iKm-infKmm)/tauKmm
+
+## Dendrite equations, inject conductances to the dendrite
+iDendrite(VD)=I-gE*INE*(VD-VAMPA) -gI*INI*(VD-VGABA) -G_lD*(VD-eLKd) -G_kl*(VD-eKd) -G_Nal*(VD-eNad)-INapump(Imaxdend,Ko,Nai) -Ikpump(Imaxdend,Ko,Nai) -iNapD(m_iNapD,VD) -iKCa(m_iKCa,VD) -iHVA(m_iHVA,h_iHVA,VD) -iNaD(m_iNaD,h_iNaD,VD) -iKm(m_iKm,VD)
+# -iKm(m_iKm,VD) 
+
+## Soma equations input current to dendrite, current is injected to the soma
+VSOMA(VD,m_iNa,h_iNa,m_iKv)=(VD + (kappa*S_Soma * g2_SOMA(m_iNa,h_iNa,m_iKv)))/(1+kappa*S_Soma*g1_SOMA(m_iNa,h_iNa,m_iKv))
+
+
+# inject conductances to the dendrite
+
+g1_SOMA(m_iNa,h_iNa,m_iKv)=gg_kl+gg_Nal+(2.9529*G_Na*m_iNa*m_iNa*m_iNa*h_iNa)+(2.9529*G_Kv*m_iKv)
+
+g2_SOMA(m_iNa,h_iNa,m_iKv)= (gg_kl*eKs) +gg_Nal*eNas+(2.9529*G_Na*m_iNa*m_iNa*m_iNa*h_iNa*eNas)+(2.9529*G_Kv*m_iKv*eKs) -INapump(Imaxsoma,Ko,Nai) -Ikpump(Imaxsoma,Ko,Nai)
+
+
+
+# Reversal potentials
+# somatic and dendritic reversal potentials are the same
+
+eKs=e0*log(Ko/Ki)
+eKd=e0*log(Ko/Ki)
+
+eNas=e0*log(Nao/Nai)
+eNad=e0*log(Nao/Nai)
+
+
+# Chloride leak and VGABA
+eLKs=e0*log(Cli/Clo)
+eLKd=e0*log(Cli/Clo)
+VGABA=e0*log((4*Cli+HCO3i)/(4*Clo+HCO3o))
+
+
+
+#######################################################################################################
+#### Na K pump, buffer pump ##
+ Ap(Ko,Nai)=(1/((1+(Koalpha/Ko))*(1+(Koalpha/Ko))))*(1/((1+(Naialpha/Nai))*(1+(Naialpha/Nai))*(1+(Naialpha/Nai))))
+ Ikpump(Imax,Ko,Nai)=-2*Imax*Ap(Ko,Nai)
+ INapump(Imax,Ko,Nai)=3*Imax*Ap(Ko,Nai)
+
+
+
+########################################################################################################
+############################### Axo-somatic compartment ############################## 
+
+
+
+###### K channel ###### approximation is changed
+a_iKv=0.02*(VSOMA(VD,m_iNa,h_iNa,m_iKv)-Vbolz)/(1-exp(-(VSOMA(VD,m_iNa,h_iNa,m_iKv)-Vbolz)/9))
+b_iKv=-0.002*(VSOMA(VD,m_iNa,h_iNa,m_iKv)-Vbolz)/(1-exp((VSOMA(VD,m_iNa,h_iNa,m_iKv)-Vbolz)/9))
+
+tauKvm=1/((a_iKv+b_iKv)*2.9529)
+infKvm=a_iKv/(a_iKv+b_iKv)
+
+dm_iKv/dt=-(m_iKv-infKvm)/tauKvm 
+
+iKv(m_iKv)=2.9529*G_Kv * m_iKv * (VSOMA(VD,m_iNa,h_iNa,m_iKv) - eKs)
+# is a themperature coefficient, phi
+
+
+####### Na Channel - m and h variables ######
+am_iNa=0.182*(VSOMA(VD,m_iNa,h_iNa,m_iKv)-10+35)/(1-exp(-(VSOMA(VD,m_iNa,h_iNa,m_iKv)-10+35)/9))
+
+bm_iNa=0.124*(-VSOMA(VD,m_iNa,h_iNa,m_iKv)+10-35)/(1-exp(-(-VSOMA(VD,m_iNa,h_iNa,m_iKv)+10-35)/9))
+
+ah_iNa=0.024*(VSOMA(VD,m_iNa,h_iNa,m_iKv)-10+50)/(1-exp(-(VSOMA(VD,m_iNa,h_iNa,m_iKv)-10+50)/5))
+
+bh_iNa=0.0091*(-VSOMA(VD,m_iNa,h_iNa,m_iKv)+10-75)/(1-exp(-(-VSOMA(VD,m_iNa,h_iNa,m_iKv)+10-75)/5))
+
+tau_m=(1/(am_iNa+bm_iNa))/2.9529
+tau_h=(1/(ah_iNa+bh_iNa))/2.9529
+m_inf_new=am_iNa/(am_iNa+bm_iNa) 
+h_inf_new=1/(1+exp((VSOMA(VD,m_iNa,h_iNa,m_iKv)-10+65)/6.2))
+
+dm_iNa/dt=-(m_iNa-m_inf_new)/tau_m
+dh_iNa/dt=-(h_iNa-h_inf_new)/tau_h
+
+iNa(m_iNa,h_iNa)=2.9529 *G_Na * m_iNa * m_iNa * m_iNa * h_iNa * (VSOMA(VD,m_iNa,h_iNa,m_iKv) - eNas)
+
+
+####### Extracellular K+ & Intracelluar Na ######
+
+
+#  SigIkints = gg_kl*(VSOMA(VD,m_iNa,h_iNa,m_iKv)-eKs) +G_kl*(VD-eKd) +iKCa(m_iKCa,VD) +iKm(m_iKm,VD) +iKv(m_iKv)/200
+#  SigINaints = gg_Nal*(VSOMA(VD,m_iNa,h_iNa,m_iKv)-eNas) +G_Nal*(VD-eNad) +iNaD(m_iNaD,h_iNaD,VD) +iNapD(m_iNapD,VD) +(iNa(m_iNa,h_iNa)/200)
+
+# approximately 0.4 mM Cli increase after one stimulation (see Jedlichka model)
+
+ #  SigCl = G_lD*(VD-eLKd) +gI*INI*(VD-VGABA)
+
+ # dNai/dt=-kNa/F*(SigINaints+INapump(Imaxsoma,Ko,Nai))
+ # dNao/dt=kNa/F/d*(SigINaints+INapump(Imaxsoma,Ko,Nai))
+
+#  par eps=0, k_inf=4
+
+# Ko accumulation with KCC2 extrusion included
+ #  dKi/dt=-kK/F*(SigIkints+Ikpump(Imaxsoma,Ko,Nai))
+ #  dKo/dt=kK/F/d*(SigIkints +Ikpump(Imaxsoma,Ko,Nai) +Ikpump(Imaxdend,Ko,Nai) -Ikcc2*(eKs-eLKs)/((eKs-eLKs)+Vhalf) ) +Glia(Ko,Bs)
+
+#  kon(Ko,Koth)=koff/(1+exp((Ko-Koth)/(-1.15))) 
+#  Glia(Ko,Bs)=koff*(Bmax-Bs)/K1n -kon(Ko,Kothsoma)/K1n*Bs*Ko  
+#  dBs/dt=koff*(Bmax-Bs) -kon(Ko,Kothsoma)*Bs*Ko
+
+# KCC2-dependent extrusion, 
+#  dCli/dt=kCL/F*(SigCl + Ikcc2*(eKs-eLKs)/((eKs-eLKs)+Vhalf) ) 
+
+###### Integration ######
+dVD/dt =(1/Cm)*(iDendrite(VD)+(VSOMA(VD,m_iNa,h_iNa,m_iKv)-VD)/(kappa*S_Dend))
+
+
+
+aux VS=VSOMA(VD,m_iNa,h_iNa,m_iKv)
+
+
+########## Initial conditions ###########
+
+# initial conditions at equilibrium
+ init VD=-63.2216, m_iKv=0, m_iNa=0.0204, h_iNa=0.7918
+
+# dendrite currents
+ init M_INAD=0.00, H_INAD=0.91
+ init M_INAPD=0.00
+ init M_IHVA=0.00, H_IHVA=0.00, CAI=0.00
+ init M_IKCA=0.00
+ init CAI=0.00
+ init M_IKM=0.01
+ 
+ init INE=0, INNE=0, INI=0, INNI=0
+
+#  init Ko=3.4565
+#  init Ki=130
+
+ # init Bs=500
+
+# init Nai=20
+# init Nao=130
+ 
+# init Cli=5.4220
+# init Clo=130
+
+
+@ MAXSTOR=10000000,TOTAL=1000,XP=T,YP=VS
+@ BOUND=10000000000000000,DT=0.05,METH=Euler,XHI=20,XLO=0,YLO=0,YHI=20
+# @ dsmax=0.5, parmin=0.1, parmax=30, dsmin=0.0001, ntst=100, ds=0.001
+
+done
